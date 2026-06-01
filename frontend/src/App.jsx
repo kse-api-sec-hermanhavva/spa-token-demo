@@ -3,6 +3,8 @@ import keycloak from "./keycloak.js";
 import { fetchNotes, createNote, deleteNote } from "./api.js";
 
 function decodeJwtPayload(token) {
+  if (!token) return null;
+
   try {
     const base64 = token.split(".")[1];
     const json = atob(base64.replace(/-/g, "+").replace(/_/g, "/"));
@@ -19,7 +21,7 @@ function App() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
-  const [tokenPayload, setTokenPayload] = useState(null);
+  const [tokenDump, setTokenDump] = useState(null);
   const [showToken, setShowToken] = useState(false);
   const [keycloakReady, setKeycloakReady] = useState(false);
 
@@ -39,12 +41,9 @@ function App() {
   }, []);
 
   function handleAuthenticated() {
-    const token = keycloak.token;
-    // Store token in localStorage (deliberate choice for demo purposes)
-    localStorage.setItem("access_token", token);
+    persistTokens();
     setAuthenticated(true);
     setUsername(keycloak.tokenParsed?.preferred_username || "unknown");
-    setTokenPayload(decodeJwtPayload(token));
 
     // Refresh token before it expires
     setInterval(() => {
@@ -52,8 +51,7 @@ function App() {
         .updateToken(30)
         .then((refreshed) => {
           if (refreshed) {
-            localStorage.setItem("access_token", keycloak.token);
-            setTokenPayload(decodeJwtPayload(keycloak.token));
+            persistTokens();
           }
         })
         .catch(() => {
@@ -61,6 +59,59 @@ function App() {
           handleLogout();
         });
     }, 30000);
+  }
+
+  function persistTokens() {
+    const dump = buildTokenDump();
+
+    // Store tokens in localStorage (deliberate choice for demo purposes)
+    localStorage.setItem("access_token", dump.tokens.access.value);
+    localStorage.setItem("id_token", dump.tokens.id.value);
+    localStorage.setItem("refresh_token", dump.tokens.refresh.value);
+    setTokenDump(dump);
+  }
+
+  function buildTokenDump() {
+    const accessToken = keycloak.token || "";
+    const idToken = keycloak.idToken || "";
+    const refreshToken = keycloak.refreshToken || "";
+
+    return {
+      dumpedAt: new Date().toISOString(),
+      githubUsername: "torinks",
+      keycloakUsername: keycloak.tokenParsed?.preferred_username || "unknown",
+      tokens: {
+        access: {
+          storageKey: "access_token",
+          value: accessToken,
+          payload: decodeJwtPayload(accessToken),
+        },
+        id: {
+          storageKey: "id_token",
+          value: idToken,
+          payload: decodeJwtPayload(idToken),
+        },
+        refresh: {
+          storageKey: "refresh_token",
+          value: refreshToken,
+          payload: decodeJwtPayload(refreshToken),
+        },
+      },
+    };
+  }
+
+  function downloadTokenDump() {
+    if (!tokenDump) return;
+
+    const blob = new Blob([JSON.stringify(tokenDump, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `spa-token-dump-${tokenDump.githubUsername}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   const loadNotes = useCallback(async () => {
@@ -85,10 +136,12 @@ function App() {
 
   function handleLogout() {
     localStorage.removeItem("access_token");
+    localStorage.removeItem("id_token");
+    localStorage.removeItem("refresh_token");
     setAuthenticated(false);
     setUsername("");
     setNotes([]);
-    setTokenPayload(null);
+    setTokenDump(null);
     keycloak.logout({ redirectUri: window.location.origin });
   }
 
@@ -205,22 +258,28 @@ function App() {
       {/* JWT Token Inspector */}
       <section style={styles.section}>
         <h2>
-          JWT Token Inspector{" "}
+          Token Dump{" "}
           <button
             onClick={() => setShowToken(!showToken)}
             style={styles.buttonSmall}
           >
             {showToken ? "Hide" : "Show"}
           </button>
+          {showToken && tokenDump && (
+            <button onClick={downloadTokenDump} style={styles.buttonSmall}>
+              Download JSON
+            </button>
+          )}
         </h2>
-        {showToken && tokenPayload && (
+        {showToken && tokenDump && (
           <div>
             <p style={{ fontSize: "0.85em", color: "#666" }}>
-              This token is stored in <code>localStorage</code> -- open DevTools
-              {" -> "} Application {" -> "} Local Storage to see it.
+              Access, ID, and refresh tokens are stored in{" "}
+              <code>localStorage</code> for this lab. Open DevTools
+              {" -> "} Application {" -> "} Local Storage to inspect them.
             </p>
             <pre style={styles.tokenBlock}>
-              {JSON.stringify(tokenPayload, null, 2)}
+              {JSON.stringify(tokenDump, null, 2)}
             </pre>
           </div>
         )}

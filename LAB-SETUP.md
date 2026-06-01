@@ -15,6 +15,7 @@ Browser (React SPA)
 ```
 
 The access token is stored in the browser (managed by keycloak-js) and sent as an `Authorization: Bearer <token>` header on every API request.
+The SPA also exposes a lab-only token dump for inspecting the access, ID, and refresh tokens locally.
 
 ## Prerequisites
 
@@ -63,6 +64,18 @@ purpose of TLS entirely. In a real deployment you would either:
 | Username | Password | Realm        |
 |----------|----------|--------------|
 | student  | student  | api-security |
+
+## Token dump
+
+After login, the Token Dump section can show and download a JSON file containing:
+
+- `access_token`
+- `id_token`
+- `refresh_token`
+- decoded JWT payloads when the token format allows it
+- `githubUsername: "torinks"` as dump metadata
+
+The dump is local to the browser and is intended for lab inspection only.
 
 ## Running locally
 
