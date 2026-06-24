@@ -36,7 +36,11 @@ function App() {
 
   useEffect(() => {
     keycloak
-      .init({ onLoad: "check-sso", checkLoginIframe: false })
+      .init({
+        onLoad: "check-sso",
+        checkLoginIframe: false,
+        scope: "openid notes:read notes:write notes:delete",
+      })
       .then((auth) => {
         setKeycloakReady(true);
         if (auth) {
