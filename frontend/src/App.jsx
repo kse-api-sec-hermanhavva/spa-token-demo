@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import keycloak from "./keycloak.js";
 import { fetchNotes, createNote, deleteNote } from "./api.js";
 
+const REQUESTED_SCOPES = "openid notes:read notes:write notes:delete";
+
 function decodeJwtPart(part) {
   if (!part) return null;
   try {
@@ -39,7 +41,7 @@ function App() {
       .init({
         onLoad: "check-sso",
         checkLoginIframe: false,
-        scope: "openid notes:read notes:write notes:delete",
+        scope: REQUESTED_SCOPES,
       })
       .then((auth) => {
         setKeycloakReady(true);
@@ -147,7 +149,9 @@ function App() {
   }, [authenticated, loadNotes]);
 
   function handleLogin() {
-    keycloak.login().then(() => handleAuthenticated());
+    keycloak
+      .login({ scope: REQUESTED_SCOPES })
+      .then(() => handleAuthenticated());
   }
 
   function handleLogout() {
