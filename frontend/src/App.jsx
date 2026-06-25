@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import keycloak from "./keycloak.js";
 import { fetchNotes, createNote, deleteNote } from "./api.js";
 
-const REQUESTED_SCOPES = "openid notes:read notes:write notes:delete notes-spa-aud-dedicated";
+const REQUESTED_SCOPES = "openid notes:read notes:write notes-spa-aud-dedicated";
 
 function decodeJwtPart(part) {
   if (!part) return null;
